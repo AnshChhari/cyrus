@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cyrus AI Chatbot</title>
+  <style>
+    body {
+      background: #151a1e;
+      color: #00ff99;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      font-size: 1.5em;
+      text-align: center;
+      padding: 1em 0;
+      background: #10161b;
+      letter-spacing: 2px;
+      color: #00ffcc;
+      box-shadow: 0 2px 4px #00ffcc22;
+    }
+    #chat {
+      flex: 1;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .message {
+      padding: 0.85em 1em;
+      border-radius: 1.2em;
+      max-width: 75%;
+      word-break: break-word;
+      animation: fadeIn 0.28s;
+    }
+    .user {
+      align-self: flex-end;
+      background: linear-gradient(90deg, #00ffcc 40%, #005544 100%);
+      color: #0b2027;
+      box-shadow: 0 1px 10px #00ffcc22;
+    }
+    .bot {
+      align-self: flex-start;
+      background: #232b2f;
+      color: #33ffcc;
+      border: 1px solid #00ffcc44;
+      box-shadow: 0 1px 8px #00ffcc11;
+    }
+    @media (max-width: 550px) {
+      #chat {
+        max-width: 100vw;
+        padding: 6px;
+      }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    form {
+      display: flex;
+      gap: 8px;
+      max-width: 480px;
+      margin: 0 auto 18px auto;
+      padding: 8px 0;
+    }
+    input[type="text"] {
+      flex: 1;
+      font-size: 1em;
+      border: 1px solid #00ffcc55;
+      border-radius: 1.2em;
+      padding: 0.7em 1em;
+      background: #1a2024;
+      color: #00ffcc;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input[type="text"]:focus { border-color: #00ffcc; }
+    button {
+      background: #00ff99;
+      color: #151a1e;
+      padding: 0 1.4em;
+      border: none;
+      border-radius: 1.2em;
+      font-size: 1em;
+      cursor: pointer;
+      box-shadow: 0 2px 9px #00ff9944;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+    }
+    button:active { background: #00c37a; }
+    .spinner {
+      border: 2px solid #222;
+      border-top: 2px solid #00ffcc;
+      border-radius: 50%;
+      width: 18px; height: 18px;
+      animation: spin 1s linear infinite;
+      margin-left: 0.3em;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #00ffcc33; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <header>
+    🤖 Cyrus AI Chatbot
+  </header>
+  <div id="chat"></div>
+  <form id="chat-form" autocomplete="off">
+    <input id="input" type="text" placeholder="Type your message..." required autocomplete="off" />
+    <button id="sendbtn" type="submit">Send</button>
+  </form>
+  <script>
+    const chat = document.getElementById('chat');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('sendbtn');
+
+    // CONFIGURE BELOW
+    const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+    const API_KEY = ''; // <<<--- Paste your OpenRouter API key here ("sk-...")
+
+    async function fetchAIResponse(message) {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + API_KEY,
+          'HTTP-Referer': 'https://cyrus-chat.vercel.app/',
+          'X-Title': 'CyrusAI'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-1.5-flash', // or 'google/gemini-27b' if that is your intended model
+          messages: [
+            { role: 'system', content: 'You are Cyrus, a helpful AI assistant.' },
+            { role: 'user', content: message }
+          ]
+        }),
+      });
+      const data = await res.json();
+      return (
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.text ||
+        data?.reply ||
+        'No response'
+      );
+    }
+
+    function showMessage(content, sender) {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      div.innerHTML = content;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showSpinner() {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `<span class="spinner"></span>`;
+    }
+    function hideSpinner() {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send";
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const prompt = input.value.trim();
+      if (!prompt) return;
+      showMessage(prompt, 'user');
+      input.value = '';
+      input.focus();
+      showSpinner();
+      try {
+        const reply = await fetchAIResponse(prompt);
+        showMessage(reply, 'bot');
+      } catch (err) {
+        showMessage('❌ Error fetching response!', 'bot');
+      }
+      hideSpinner();
+    };
+  </script>
+</body>
+</html>
